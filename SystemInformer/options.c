@@ -3238,10 +3238,8 @@ INT_PTR CALLBACK PhpOptionsAdvancedDlgProc(
                 {
                     PPH_OPTIONS_ADVANCED_ROOT_NODE* nodes;
                     ULONG numberOfNodes;
-
                     if (!GetSelectedOptionsAdvancedNodes(context, &nodes, &numberOfNodes))
                         break;
-
                     for (ULONG i = 0; i < numberOfNodes; i++)
                     {
                         PhSettingFromString(
@@ -3251,13 +3249,11 @@ INT_PTR CALLBACK PhpOptionsAdvancedDlgProc(
                             PhSystemDpi,
                             nodes[i]->Setting
                         );
-
                         PhMoveReference(
                             &nodes[i]->ValueString,
                             PhSettingToString(nodes[i]->Setting->Type, nodes[i]->Setting)
                         );
                     }
-
                     TreeNew_NodesStructured(context->TreeNewHandle);
                     PhApplyTreeNewFilters(&context->TreeFilterSupport);
                 }

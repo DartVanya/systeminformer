@@ -564,11 +564,11 @@ INT_PTR CALLBACK PhChooseNewPageDlgProc(
 
             clientRect.top = clientRect.bottom;
             clientRect.bottom = clientRect.top + PhGetDpi(50, dpi);
+
             if (PhEnableThemeSupport)
             {
                 SetDCBrushColor(hdc, RGB(50, 50, 50));
                 FillRect(hdc, &clientRect, GetStockObject(DC_BRUSH));
-
                 clientRect.bottom = clientRect.top + PhGetDpi(2, dpi);
                 InflateRect(&clientRect, -1, 0);
                 SetDCBrushColor(hdc, RGB(36, 36, 36));
