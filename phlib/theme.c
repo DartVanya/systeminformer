@@ -202,6 +202,7 @@ VOID PhInitializeWindowTheme(
                     AllowDarkModeForWindow_I = PhGetDllBaseProcedureAddress(baseAddress, NULL, 133);
                     SetPreferredAppMode_I = PhGetDllBaseProcedureAddress(baseAddress, NULL, 135);
                     //FlushMenuThemes_I = PhGetDllBaseProcedureAddress(baseAddress, NULL, 136);
+                    IsDarkModeAllowedForWindow_I = PhGetDllBaseProcedureAddress(baseAddress, NULL, 137);
                 }
 
                 if (SetPreferredAppMode_I)
@@ -742,7 +743,9 @@ BOOLEAN CALLBACK PhpThemeWindowEnumChildWindows(
             //    PhSetControlTheme(tooltipWindow, L"");
             //    break;
             //case 1: // Old colors
-            PhWindowThemeSetDarkMode(WindowHandle, TRUE);
+            //PhWindowThemeSetDarkMode(WindowHandle, TRUE);
+            AllowDarkModeForWindow_I(WindowHandle, TRUE);
+            PhSetControlTheme(WindowHandle, L"DarkMode_ItemsView");
             PhWindowThemeSetDarkMode(tooltipWindow, TRUE);
         }
 
@@ -821,6 +824,7 @@ BOOLEAN CALLBACK PhpThemeWindowEnumChildWindows(
             //case 1: // Old colors
             PhWindowThemeSetDarkMode(tooltipWindow, TRUE);
             PhWindowThemeSetDarkMode(WindowHandle, TRUE);
+            AllowDarkModeForWindow_I(WindowHandle, TRUE);
         }
 
         if (PhEnableThemeListviewBorder)
@@ -3270,12 +3274,11 @@ LRESULT CALLBACK PhpThemeWindowACLUISubclassProc(
                     {
                         HDC hdc = GetDC(WindowHandle);
                         RECT rectControl = customDraw->rc;
-                        InflateRect(&rectControl, 2, 2);
+                        PhInflateRect(&rectControl, 2, 2);
                         MapWindowRect(customDraw->hdr.hwndFrom, WindowHandle, &rectControl);
                         FillRect(hdc, &rectControl, PhThemeWindowBackgroundBrush);   // fix the annoying white border left by the previous active control
                         ReleaseDC(WindowHandle, hdc);
                     }
-                    return CDRF_DODEFAULT;
                 }
             }
         }
