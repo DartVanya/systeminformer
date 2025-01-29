@@ -2374,6 +2374,7 @@ BOOLEAN PhUiRestartProcess(
     BOOLEAN environmentAllocated = FALSE;
     PVOID environmentBuffer = NULL;
     ULONG environmentLength;
+    BOOLEAN processTerminated = FALSE;
 
     if (PhGetIntegerSetting(L"EnableWarnings"))
     {
@@ -2467,6 +2468,74 @@ BOOLEAN PhUiRestartProcess(
 
     NtClose(processHandle);
     processHandle = NULL;
+
+    // Special handling for the current shell process. (dmex)
+    // Handling shell process only after VM_READ routines above have completed, because we cannot properly read memory of exited process (Dart Vanya)
+    {
+        CLIENT_ID shellClientId;
+        HWND shellWindow;
+
+        if (NT_SUCCESS(PhGetWindowClientId(shellWindow = PhGetShellWindow(), &shellClientId)) &&
+            Process->ProcessId == shellClientId.UniqueProcess)
+        {
+            if (NT_SUCCESS(PhOpenProcess(
+                &processHandle,
+                SYNCHRONIZE,
+                Process->ProcessId
+                )))
+            {
+                BOOLEAN postToTaskbar = WindowsVersion >= WINDOWS_VISTA;
+
+                if (postToTaskbar)
+                {
+                    HWND taskbarWindow = NULL;
+                    CLIENT_ID taskbarClientId;
+                    WCHAR windowClassName[MAX_PATH] = L"";
+
+                    while (taskbarWindow = FindWindowEx(NULL, taskbarWindow, NULL, NULL))
+                    {
+                        if (NT_SUCCESS(PhGetWindowClientId(taskbarWindow, &taskbarClientId)) &&
+                            taskbarClientId.UniqueProcess == shellClientId.UniqueProcess)
+                        {
+                            GetClassName(taskbarWindow, windowClassName, RTL_NUMBER_OF(windowClassName));
+                            if (PhEqualStringZ(windowClassName, L"Shell_TrayWnd", FALSE))
+                            {
+                                postToTaskbar = !PostMessage(taskbarWindow, WM_USER + 0x1B4, 0, 0);  // exit Explorer official way (Dart Vanya)
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (postToTaskbar)
+                {
+                    PostMessage(shellWindow, WM_QUIT, 0, 0);
+                }
+
+                // Wait for a reasonably timeout (maybe a setting like ExplorerShellRestartTimeout?)
+                status = PhWaitForMultipleObjectsAndPump(NULL, 1, &processHandle, 2500, QS_ALLINPUT);
+                processTerminated = status == STATUS_WAIT_0;
+                NtClose(processHandle);
+                processHandle = NULL;
+
+                if (!processTerminated)
+                {
+                    status = PhOpenProcess(
+                        &processHandle,
+                        PROCESS_TERMINATE,
+                        Process->ProcessId
+                        );
+
+                    if (NT_SUCCESS(status))
+                    {
+                        processTerminated = NT_SUCCESS(PhTerminateProcess(processHandle, STATUS_SUCCESS));
+                        NtClose(processHandle);
+                        processHandle = NULL;
+                    }
+                }
+            }
+        }
+    }
 
     // Start the process.
     //
@@ -2639,7 +2708,10 @@ BOOLEAN PhUiRestartProcess(
 
         // Terminate the existing process.
 
-        PhTerminateProcess(processHandle, STATUS_SUCCESS);
+        if (!processTerminated)
+        {
+            status = PhTerminateProcess(processHandle, STATUS_SUCCESS);
+        }
 
         // Update the console foreground.
 
