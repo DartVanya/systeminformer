@@ -2400,34 +2400,6 @@ BOOLEAN PhUiRestartProcess(
     if (Process->ProcessId == NtCurrentProcessId())
         return FALSE;
 
-    // Special handling for the current shell process. (dmex)
-    {
-        CLIENT_ID shellClientId;
-
-        if (NT_SUCCESS(PhGetWindowClientId(PhGetShellWindow(), &shellClientId)))
-        {
-            if (Process->ProcessId == shellClientId.UniqueProcess)
-            {
-                if (NT_SUCCESS(PhOpenProcess(
-                    &processHandle,
-                    PROCESS_TERMINATE,
-                    Process->ProcessId
-                    )))
-                {
-                    status = PhTerminateProcess(
-                        processHandle,
-                        STATUS_SUCCESS
-                        );
-
-                    NtClose(processHandle);
-
-                    if (NT_SUCCESS(status))
-                        goto CleanupExit;
-                }
-            }
-        }
-    }
-
     fileNameWin32 = Process->FileName ? PhGetFileName(Process->FileName) : NULL;
 
     if (PhIsNullOrEmptyString(fileNameWin32) || !PhDoesFileExistWin32(PhGetString(fileNameWin32)))
